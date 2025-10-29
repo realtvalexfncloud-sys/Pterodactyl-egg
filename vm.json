@@ -1,31 +1,21 @@
 {
-  "_comment": "Linux Mini-VM Egg mit vm.sh von GitHub",
+  "_comment": "Linux Mini-VM Egg mit GitHub vm.sh Download",
   "meta": {
     "version": "PTDL_v2",
     "update_url": null
   },
-  "name": "Linux VM (Ubuntu/Debian) ",
-  "author": "RealTVAlexFN_Cloud",
+  "name": "Linux VM (Ubuntu/Debian)",
+  "author": "DeinName",
   "description": "Mini-VM Container, wählbare Linux OS-Version, vm.sh wird automatisch von GitHub geladen und gestartet",
   "features": null,
   "docker_images": {
-    "Ubuntu 24.04": "ubuntu:24.04",
-    "Ubuntu 20.04": "ubuntu:20.04",
     "Ubuntu 22.04": "ubuntu:22.04",
     "Debian 12": "debian:12"
-    "Debian 11": "debian:11"
-    "Debian 10": "debian:10"
   },
-  "startup": "bash vm.sh",
-  "config": {
-    "files": "{}",
-    "startup": "{\n    \"done\": \"Linux environment ready!\"\n}",
-    "logs": "{}",
-    "stop": "exit 0"
-  },
+  "startup": "bash /home/container/vm.sh",
   "scripts": {
     "installation": {
-      "script": "#!/bin/bash\n\n# VM.sh von GitHub herunterladen\nGITHUB_URL=\"https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main/vm.sh\"\ncurl -fsSL \"$GITHUB_URL\" -o /home/container/vm.sh\nchmod +x /home/container/vm.sh\n",
+      "script": "curl -fsSL https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main/vm.sh -o /home/container/vm.sh && chmod +x /home/container/vm.sh",
       "container": "ubuntu:22.04",
       "entrypoint": "bash"
     }
@@ -33,12 +23,21 @@
   "variables": [
     {
       "name": "Custom OS Image",
-      "description": "Docker-Image, z.B. debian:bookworm, ubuntu:22.04, ubuntu:24.04,ubuntu:20.04",
+      "description": "Optional: eigenes Docker-Image, z.B. debian:bookworm oder ubuntu:20.04",
       "env_variable": "CUSTOM_IMAGE",
       "default_value": "",
       "user_viewable": true,
       "user_editable": true,
       "rules": "nullable|string|max:100"
+    },
+    {
+      "name": "VM Script URL",
+      "description": "Link zu vm.sh auf GitHub",
+      "env_variable": "VM_SCRIPT_URL",
+      "default_value": "https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main/vm.sh",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:200"
     }
   ]
 }
