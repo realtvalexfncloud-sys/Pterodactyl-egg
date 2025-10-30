@@ -12,6 +12,21 @@
   "docker_images": {
     "Ubuntu 22.04": "ubuntu:22.04",
     "Debian 12": "debian:12"
+ "config": {
+  "files": "{}",
+  "startup": "{ \"done\": \"Server ready\" }",
+  "logs": "{}",
+  "stop": "exit 0",
+  "resources": {
+    "default": {
+      "memory": 4096,
+      "swap": 512,
+      "disk": 10240,
+      "io": 500,
+      "cpu": 200
+    }
+  }
+}   
   },
   "file_denylist": [],
   "startup": "bash /home/container/vm.sh",
