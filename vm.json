@@ -3,8 +3,8 @@
   "exported_at": "2025-10-30T00:00:00+00:00",
   "name": "VM (QEMU/KVM) – Ubuntu/Debian Cloud",
   "author": "realtvalexfncloud@gmail.com",
-  "description": "Linux-VMs via QEMU/KVM aus offiziellen Cloud-Images (Ubuntu/Debian) mit Cloud-Init. OS-/Versionsauswahl, SSH/Port-Forwards, sauberes Stop/Kill.",
-  "features": null,
+  "description": "Linux-VMs via QEMU/KVM mit offiziellen Cloud-Images (Ubuntu/Debian) und Cloud-Init. OS-/Versionsauswahl, SSH-Forwarding, sauberes Stop/Kill.",
+  "features": [],
   "docker_images": {
     "GHCR (empfohlen)": "ghcr.io/realtvalexfncloud-sys/qemu-cloud:latest",
     "Docker Hub (Fallback)": "docker.io/realtvalexfncloud-sys/qemu-cloud:latest"
@@ -13,16 +13,15 @@
   "startup": "/bin/bash /home/container/start.sh",
   "config": {
     "files": "{}",
-    "startup": "{\n  \"done\": \"VM_READY\"\n}",
-    "logs": "{\n  \"custom\": false\n}",
+    "startup": "{ \"done\": \"VM_READY\" }",
+    "logs": "{}",
     "stop": "/bin/bash /home/container/stop.sh"
   },
   "scripts": {
     "installation": {
-      "script": "#!/bin/bash\nset -euo pipefail\nREPO_RAW=\"${REPO_RAW:-https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main}\"\nmkdir -p /mnt/server\ncurl -fsSL \"$REPO_RAW/scripts/start.sh\" -o /mnt/server/start.sh\ncurl -fsSL \"$REPO_RAW/scripts/stop.sh\"  -o /mnt/server/stop.sh\ncurl -fsSL \"$REPO_RAW/scripts/vm.sh\"    -o /mnt/server/vm.sh || true\ncurl -fsSL \"$REPO_RAW/scripts/banner.txt\" -o /mnt/server/banner.txt || true\nchmod +x /mnt/server/*.sh\nif [ -s /mnt/server/banner.txt ]; then echo; cat /mnt/server/banner.txt; echo; fi\necho \"Installation abgeschlossen ✅\"\necho \"Install ok\"\n",
-      "container": "ghcr.io/parkervcp/installers:debian",
-      "entrypoint": "bash",
-      "script_container": true
+      "script": "#!/bin/bash\nset -euo pipefail\nREPO_RAW=\"${REPO_RAW:-https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main}\"\nmkdir -p /mnt/server\ncurl -fsSL \"$REPO_RAW/scripts/start.sh\" -o /mnt/server/start.sh\ncurl -fsSL \"$REPO_RAW/scripts/stop.sh\"  -o /mnt/server/stop.sh\ncurl -fsSL \"$REPO_RAW/scripts/vm.sh\"    -o /mnt/server/vm.sh || true\ncurl -fsSL \"$REPO_RAW/scripts/banner.txt\" -o /mnt/server/banner.txt || true\nchmod +x /mnt/server/*.sh\nif [ -s /mnt/server/banner.txt ]; then echo; cat /mnt/server/banner.txt; echo; fi\necho \"Install ok\"\n",
+      "container": "ghcr.io/pterodactyl/installers:debian",
+      "entrypoint": "/bin/bash"
     }
   },
   "variables": [
@@ -51,7 +50,7 @@
       "default_value": "22.04",
       "user_viewable": true,
       "user_editable": true,
-      "rules": "required|string|regex:/^(20\\.04|22\\.04|24\\.04|11|12)$/"
+      "rules": "required|string|in:20.04,22.04,24.04,11,12"
     },
     {
       "name": "DISK_SIZE_GB",
@@ -93,7 +92,7 @@
       "name": "VM_USER",
       "description": "User in der VM (Cloud-Init)",
       "env_variable": "VM_USER",
-      "default_value": "user",
+      "default_value": "ptero",
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|string|alpha_dash"
@@ -102,7 +101,7 @@
       "name": "VM_PASSWORD",
       "description": "Passwort für VM_USER (ändere das!)",
       "env_variable": "VM_PASSWORD",
-      "default_value": "root",
+      "default_value": "ChangeMe123!",
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|string|min:8|max:128"
