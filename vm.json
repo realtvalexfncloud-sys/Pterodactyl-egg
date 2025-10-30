@@ -1,44 +1,28 @@
 {
-  "_comment": "Linux VM Egg mit GitHub vm.sh Download",
+  "_comment": "Minimal funktionsfähiges Linux VM Egg mit GitHub Script",
   "meta": {
     "version": "PTDL_v2",
     "update_url": null
   },
   "exported_at": "2025-10-30T00:00:00+00:00",
-  "name": "Linux VM (Ubuntu/Debian)",
+  "name": "Linux VM Test",
   "author": "realtvalexfncloud@gmail.com",
-  "description": "Startet eine Mini-VM im Container mit automatischem Download von vm.sh via GitHub.",
+  "description": "Startet eine Mini-VM im Container mit automatischem vm.sh Download.",
   "features": null,
   "docker_images": {
-    "Ubuntu 22.04": "ubuntu:22.04",
-    "Debian 12": "debian:12"
- "config": {
-  "files": "{}",
-  "startup": "{ \"done\": \"Server ready\" }",
-  "logs": "{}",
-  "stop": "exit 0",
-  "resources": {
-    "default": {
-      "memory": 4096,
-      "swap": 512,
-      "disk": 10240,
-      "io": 500,
-      "cpu": 200
-    }
-  }
-}   
+    "Ubuntu 22.04": "ubuntu:22.04"
   },
   "file_denylist": [],
   "startup": "bash /home/container/vm.sh",
   "config": {
     "files": "{}",
-    "startup": "{\n  \"done\": \"Server ready\"\n}",
+    "startup": "{ \"done\": \"Server ready\" }",
     "logs": "{}",
     "stop": "exit 0"
   },
   "scripts": {
     "installation": {
-      "script": "#!/bin/bash\nset -e\n\n# Lade vm.sh von GitHub herunter\necho \"[INFO] Lade vm.sh von GitHub herunter...\"\ncurl -fsSL ${VM_SCRIPT_URL:-https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main/vm.sh} -o /home/container/vm.sh\nchmod +x /home/container/vm.sh\necho \"[DONE] vm.sh erfolgreich installiert.\"",
+      "script": "#!/bin/bash\nset -e\napt update -y && apt install -y curl\ncurl -fsSL ${VM_SCRIPT_URL:-https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main/vm.sh} -o /home/container/vm.sh\nchmod +x /home/container/vm.sh\necho \"[DONE] vm.sh installiert.\"",
       "container": "ubuntu:22.04",
       "entrypoint": "bash"
     }
@@ -46,7 +30,7 @@
   "variables": [
     {
       "name": "VM Script URL",
-      "description": "GitHub RAW Link zur vm.sh Datei",
+      "description": "GitHub RAW Link zu deiner vm.sh Datei",
       "env_variable": "VM_SCRIPT_URL",
       "default_value": "https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main/vm.sh",
       "user_viewable": true,
@@ -55,3 +39,4 @@
     }
   ]
 }
+
