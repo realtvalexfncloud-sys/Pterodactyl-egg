@@ -1,9 +1,9 @@
 {
   "meta": { "version": "PTDL_v2" },
   "exported_at": "2025-10-30T00:00:00+00:00",
-  "name": "Virtual Machine (QEMU/KVM) – Ubuntu/Debian Cloud",
-  "author": "dein-name",
-  "description": "Linux-VMs via QEMU/KVM aus offiziellen Cloud-Images (Ubuntu/Debian) mit Cloud-Init. OS-/Versionsauswahl, SSH/Port-Forwards, Stop/Kill sicher.",
+  "name": "VM (QEMU/KVM) – Ubuntu/Debian Cloud",
+  "author": "realtvalexfncloud@gmail.com",
+  "description": "Linux-VMs via QEMU/KVM aus offiziellen Cloud-Images (Ubuntu/Debian) mit Cloud-Init. OS-/Versionsauswahl, SSH/Port-Forwards, sauberes Stop/Kill.",
   "features": null,
   "docker_images": {
     "GHCR (empfohlen)": "ghcr.io/realtvalexfncloud-sys/qemu-cloud:latest",
@@ -19,7 +19,7 @@
   },
   "scripts": {
     "installation": {
-      "script": "#!/bin/bash\nset -euo pipefail\nREPO_RAW=\"${REPO_RAW:-https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main}\"\nmkdir -p /mnt/server\ncurl -fsSL \"$REPO_RAW/scripts/start.sh\" -o /mnt/server/start.sh\ncurl -fsSL \"$REPO_RAW/scripts/stop.sh\"  -o /mnt/server/stop.sh\nchmod +x /mnt/server/*.sh\necho \"Install ok\"\n",
+      "script": "#!/bin/bash\nset -euo pipefail\nREPO_RAW=\"${REPO_RAW:-https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main}\"\nmkdir -p /mnt/server\ncurl -fsSL \"$REPO_RAW/scripts/start.sh\" -o /mnt/server/start.sh\ncurl -fsSL \"$REPO_RAW/scripts/stop.sh\"  -o /mnt/server/stop.sh\ncurl -fsSL \"$REPO_RAW/scripts/vm.sh\"    -o /mnt/server/vm.sh || true\ncurl -fsSL \"$REPO_RAW/scripts/banner.txt\" -o /mnt/server/banner.txt || true\nchmod +x /mnt/server/*.sh\nif [ -s /mnt/server/banner.txt ]; then echo; cat /mnt/server/banner.txt; echo; fi\necho \"Installation abgeschlossen ✅\"\necho \"Install ok\"\n",
       "container": "ghcr.io/parkervcp/installers:debian",
       "entrypoint": "bash",
       "script_container": true
@@ -93,7 +93,7 @@
       "name": "VM_USER",
       "description": "User in der VM (Cloud-Init)",
       "env_variable": "VM_USER",
-      "default_value": "ptero",
+      "default_value": "user",
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|string|alpha_dash"
@@ -102,7 +102,7 @@
       "name": "VM_PASSWORD",
       "description": "Passwort für VM_USER (ändere das!)",
       "env_variable": "VM_PASSWORD",
-      "default_value": "ChangeMe123!",
+      "default_value": "root",
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|string|min:8|max:128"
@@ -129,7 +129,7 @@
       "name": "FORWARD_PORTS",
       "description": "Port-Forwards host->guest, z. B. 80->80,443->443 (Ports müssen als Allocations existieren!)",
       "env_variable": "FORWARD_PORTS",
-      "default_value": "",
+      "default_value": "80,443,22",
       "user_viewable": true,
       "user_editable": true,
       "rules": "nullable|string|max:1024"
@@ -151,6 +151,15 @@
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|integer|min:0|max:99"
+    },
+    {
+      "name": "SHOW_BANNER",
+      "description": "ASCII-Banner beim Install/Start anzeigen (1=an, 0=aus)",
+      "env_variable": "SHOW_BANNER",
+      "default_value": "1",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|in:0,1"
     }
   ]
 }
