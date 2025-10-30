@@ -1,42 +1,146 @@
 {
-  "_comment": "Minimal funktionsfähiges Linux VM Egg mit GitHub Script",
-  "meta": {
-    "version": "PTDL_v2",
-    "update_url": null
-  },
-  "exported_at": "2025-10-30T00:00:00+00:00",
-  "name": "Linux VM Test",
+  "meta": { "version": "PTDL_v2" },
+  "exported_at": "2025-01-01T00:00:00+00:00",
+  "name": "Virtual Machine (QEMU/KVM) – Ubuntu/Debian Cloud",
   "author": "realtvalexfncloud@gmail.com",
-  "description": "Startet eine Mini-VM im Container mit automatischem vm.sh Download.",
+  "description": "Startet Linux-VMs (Ubuntu/Debian) via QEMU/KVM aus offiziellen Cloud-Images mit Cloud-Init. Unterstützt OS-/Versionsauswahl, SSH-Port-Forwarding und zusätzliche Port-Forwards.",
   "features": null,
   "docker_images": {
-    "Ubuntu 22.04": "ubuntu:22.04"
+    "QEMU Cloud Base (empfohlen)": "ghcr.io/realtvalexfncloud-sys/qemu-cloud:latest"
   },
   "file_denylist": [],
-  "startup": "bash /home/container/vm.sh",
+  "startup": "/bin/bash /home/container/start.sh",
   "config": {
     "files": "{}",
-    "startup": "{ \"done\": \"Server ready\" }",
+    "startup": "null",
     "logs": "{}",
-    "stop": "exit 0"
+    "stop": "/bin/bash /home/container/stop.sh"
   },
   "scripts": {
     "installation": {
-      "script": "#!/bin/bash\nset -e\napt update -y && apt install -y curl\ncurl -fsSL ${VM_SCRIPT_URL:-https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main/vm.sh} -o /home/container/vm.sh\nchmod +x /home/container/vm.sh\necho \"[DONE] vm.sh installiert.\"",
-      "container": "ubuntu:22.04",
-      "entrypoint": "bash"
+      "script": "#!/bin/bash\\nset -euo pipefail\\nmkdir -p /mnt/server /mnt/server/vm\\n# Start/Stop-Skripte bereitstellen\\ninstall -Dm755 /tmp/start.sh /mnt/server/start.sh\\ninstall -Dm755 /tmp/stop.sh  /mnt/server/stop.sh\\necho \"Install ok\"\\n",
+      "container": "ghcr.io/realtvalexfncloud-sys/qemu-cloud:latest",
+      "entrypoint": "bash",
+      "script_container": true
     }
   },
   "variables": [
     {
-      "name": "VM Script URL",
-      "description": "GitHub RAW Link zu deiner vm.sh Datei",
-      "env_variable": "VM_SCRIPT_URL",
-      "default_value": "https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main/vm.sh",
+      "name": "OS",
+      "description": "Betriebssystem (Cloud-Image)",
+      "env_variable": "OS_FAMILY",
+      "default_value": "ubuntu",
       "user_viewable": true,
       "user_editable": true,
-      "rules": "required|string|max:300"
+      "rules": "required|string|in:ubuntu,debian"
+    },
+    {
+      "name": "OS_VERSION",
+      "description": "Version: ubuntu (20.04,22.04,24.04) / debian (11,12)",
+      "env_variable": "OS_VERSION",
+      "default_value": "22.04",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|regex:/^(20\\.04|22\\.04|24\\.04|11|12)$/"
+    },
+    {
+      "name": "DISK_SIZE_GB",
+      "description": "VM-Disk in GB (Cloud-Init wächst Root automatisch)",
+      "env_variable": "DISK_SIZE_GB",
+      "default_value": "20",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|min:10|max:1000"
+    },
+    {
+      "name": "RAM_MB",
+      "description": "RAM für die VM (achte darauf, dem Server im Panel genügend Memory zu geben!)",
+      "env_variable": "RAM_MB",
+      "default_value": "2048",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|min:512|max:131072"
+    },
+    {
+      "name": "CPU_CORES",
+      "description": "vCPU (SMP-Kerne) für die VM",
+      "env_variable": "CPU_CORES",
+      "default_value": "2",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|min:1|max:32"
+    },
+    {
+      "name": "ENABLE_KVM",
+      "description": "KVM nutzen (Host muss /dev/kvm durchreichen, Container privilegiert)",
+      "env_variable": "ENABLE_KVM",
+      "default_value": "1",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|in:0,1"
+    },
+    {
+      "name": "VM_USER",
+      "description": "User in der VM (Cloud-Init)",
+      "env_variable": "VM_USER",
+      "default_value": "ptero",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|alpha_dash"
+    },
+    {
+      "name": "VM_PASSWORD",
+      "description": "Passwort für VM_USER (ändere das!)",
+      "env_variable": "VM_PASSWORD",
+      "default_value": "ChangeMe123!",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|min:8|max:128"
+    },
+    {
+      "name": "SSH_PUBLIC_KEY",
+      "description": "Optionaler SSH Public Key (empfohlen)",
+      "env_variable": "SSH_PUBLIC_KEY",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:4096"
+    },
+    {
+      "name": "VM_HOSTNAME",
+      "description": "Hostname der VM",
+      "env_variable": "VM_HOSTNAME",
+      "default_value": "vm",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:64"
+    },
+    {
+      "name": "FORWARD_PORTS",
+      "description": "Zusätzliche Port-Forwards: host->guest, z. B. 80->80,443->443 (Ports müssen als Allocations im Panel vorhanden sein!)",
+      "env_variable": "FORWARD_PORTS",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:1024"
+    },
+    {
+      "name": "CONSOLE",
+      "description": "VM-Konsole: serial (in Panel-Console) oder vnc",
+      "env_variable": "CONSOLE",
+      "default_value": "serial",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|in:serial,vnc"
+    },
+    {
+      "name": "VNC_DISPLAY",
+      "description": "VNC Display (Port=5900+Display), nur wenn CONSOLE=vnc",
+      "env_variable": "VNC_DISPLAY",
+      "default_value": "0",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|min:0|max:99"
     }
   ]
 }
-
