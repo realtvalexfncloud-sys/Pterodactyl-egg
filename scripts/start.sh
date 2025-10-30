@@ -3,6 +3,13 @@ set -euo pipefail
 
 cd /home/container
 
+# Banner beim Start (optional)
+if [ "${SHOW_BANNER:-1}" = "1" ] && [ -f "./banner.txt" ]; then
+  echo
+  sed -e 's/\r$//' ./banner.txt || cat ./banner.txt
+  echo
+fi
+
 RAM_MB="${RAM_MB:-2048}"
 CPU_CORES="${CPU_CORES:-2}"
 DISK_SIZE_GB="${DISK_SIZE_GB:-20}"
@@ -25,6 +32,7 @@ DISK_IMG="$VM_DIR/disk.qcow2"
 SEED_ISO="$VM_DIR/seed.iso"
 QMP_SOCK="$VM_DIR/qmp.sock"
 
+# URLs für Cloud-Images
 ubuntu_url() {
   case "$1" in
     20.04) echo "https://cloud-images.ubuntu.com/releases/focal/release/ubuntu-20.04-server-cloudimg-amd64.img" ;;
@@ -47,17 +55,20 @@ case "$OS_FAMILY" in
   *) echo "Unsupported OS_FAMILY: $OS_FAMILY" >&2; exit 1 ;;
 esac
 
+# Base-Image laden
 if [ ! -f "$BASE_IMG" ]; then
   echo "Downloading cloud image: $IMG_URL"
   curl -fL --retry 3 --connect-timeout 10 "$IMG_URL" -o "$BASE_IMG.tmp"
   mv "$BASE_IMG.tmp" "$BASE_IMG"
 fi
 
+# Overlay-Disk anlegen
 if [ ! -f "$DISK_IMG" ]; then
   echo "Creating disk $DISK_IMG size ${DISK_SIZE_GB}G"
-  qemu-img create -f qcow2 -F qcow2 -b "$BASE_IMG" "$DISK_IMG" "${DISK_SIZE_GB}G" >/dev/null
+  qemu-img create -f qcow2 -b "$BASE_IMG" "$DISK_IMG" "${DISK_SIZE_GB}G" >/dev/null
 fi
 
+# Cloud-Init Seed (User/Pass/SSH-Key/Hostname + Autogrow)
 if [ ! -f "$SEED_ISO" ]; then
   cat > user-data <<EOF
 #cloud-config
@@ -91,6 +102,7 @@ EOF
   rm -f user-data meta-data
 fi
 
+# Port-Forwards
 HOSTFWD_OPTS="hostfwd=tcp:0.0.0.0:${SSH_PORT}-:22"
 if [ -n "$FORWARD_PORTS" ]; then
   IFS=',' read -ra PAIRS <<< "$FORWARD_PORTS"
@@ -105,6 +117,7 @@ if [ -n "$FORWARD_PORTS" ]; then
   done
 fi
 
+# Beschleunigung
 ACCEL="tcg,thread=multi"
 CPU_MODEL="qemu64"
 if [ "${ENABLE_KVM}" = "1" ] && [ -e /dev/kvm ]; then
@@ -114,18 +127,22 @@ else
   echo "WARN: KVM nicht verfügbar – die VM wird langsam sein."
 fi
 
+# Konsole
 DISPLAY_OPTS="-nographic -serial mon:stdio -display none"
 if [ "${CONSOLE}" = "vnc" ]; then
   VNC_DISPLAY="${VNC_DISPLAY:-0}"
   DISPLAY_OPTS="-vnc 0.0.0.0:${VNC_DISPLAY} -serial none -display vnc"
 fi
 
+# QMP Socket säubern
 rm -f "$QMP_SOCK"
 
-echo "Starting VM: ${OS_FAMILY} ${OS_VERSION}, RAM=${RAM_MB}MB, vCPU=${CPU_CORES}, Disk=${DISK_SIZE_GB}G"
-echo "SSH erreichbar über Host-Port: ${SSH_PORT}"
+# Infos
+echo "OS: ${OS_FAMILY} ${OS_VERSION} | RAM: ${RAM_MB}MB | vCPU: ${CPU_CORES} | Disk: ${DISK_SIZE_GB}G"
+echo "SSH: Verbinde auf Node-IP mit Port ${SSH_PORT} (User: ${VM_USER})"
 echo "VM_READY"
 
+# Start QEMU (im Vordergrund)
 exec qemu-system-x86_64 \
   -machine type=q35,accel=${ACCEL} \
   -cpu ${CPU_MODEL} \
