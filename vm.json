@@ -1,30 +1,40 @@
 {
   "meta": { "version": "PTDL_v2" },
-  "exported_at": "2025-01-01T00:00:00+00:00",
+  "exported_at": "2025-10-30T00:00:00+00:00",
   "name": "Virtual Machine (QEMU/KVM) – Ubuntu/Debian Cloud",
-  "author": "realtvalexfncloud@gmail.com",
-  "description": "Startet Linux-VMs (Ubuntu/Debian) via QEMU/KVM aus offiziellen Cloud-Images mit Cloud-Init. Unterstützt OS-/Versionsauswahl, SSH-Port-Forwarding und zusätzliche Port-Forwards.",
+  "author": "dein-name",
+  "description": "Linux-VMs via QEMU/KVM aus offiziellen Cloud-Images (Ubuntu/Debian) mit Cloud-Init. OS-/Versionsauswahl, SSH/Port-Forwards, Stop/Kill sicher.",
   "features": null,
   "docker_images": {
-    "QEMU Cloud Base (empfohlen)": "ghcr.io/realtvalexfncloud-sys/qemu-cloud:latest"
+    "GHCR (empfohlen)": "ghcr.io/realtvalexfncloud-sys/qemu-cloud:latest",
+    "Docker Hub (Fallback)": "docker.io/realtvalexfncloud-sys/qemu-cloud:latest"
   },
   "file_denylist": [],
   "startup": "/bin/bash /home/container/start.sh",
   "config": {
     "files": "{}",
-    "startup": "null",
-    "logs": "{}",
+    "startup": "{\n  \"done\": \"VM_READY\"\n}",
+    "logs": "{\n  \"custom\": false\n}",
     "stop": "/bin/bash /home/container/stop.sh"
   },
   "scripts": {
     "installation": {
-      "script": "#!/bin/bash\\nset -euo pipefail\\nmkdir -p /mnt/server /mnt/server/vm\\n# Start/Stop-Skripte bereitstellen\\ninstall -Dm755 /tmp/start.sh /mnt/server/start.sh\\ninstall -Dm755 /tmp/stop.sh  /mnt/server/stop.sh\\necho \"Install ok\"\\n",
-      "container": "ghcr.io/realtvalexfncloud-sys/qemu-cloud:latest",
+      "script": "#!/bin/bash\nset -euo pipefail\nREPO_RAW=\"${REPO_RAW:-https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main}\"\nmkdir -p /mnt/server\ncurl -fsSL \"$REPO_RAW/scripts/start.sh\" -o /mnt/server/start.sh\ncurl -fsSL \"$REPO_RAW/scripts/stop.sh\"  -o /mnt/server/stop.sh\nchmod +x /mnt/server/*.sh\necho \"Install ok\"\n",
+      "container": "ghcr.io/parkervcp/installers:debian",
       "entrypoint": "bash",
       "script_container": true
     }
   },
   "variables": [
+    {
+      "name": "REPO_RAW",
+      "description": "Quelle für Skripte (raw.githubusercontent.com)",
+      "env_variable": "REPO_RAW",
+      "default_value": "https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:255"
+    },
     {
       "name": "OS",
       "description": "Betriebssystem (Cloud-Image)",
@@ -45,7 +55,7 @@
     },
     {
       "name": "DISK_SIZE_GB",
-      "description": "VM-Disk in GB (Cloud-Init wächst Root automatisch)",
+      "description": "VM-Disk in GB",
       "env_variable": "DISK_SIZE_GB",
       "default_value": "20",
       "user_viewable": true,
@@ -54,7 +64,7 @@
     },
     {
       "name": "RAM_MB",
-      "description": "RAM für die VM (achte darauf, dem Server im Panel genügend Memory zu geben!)",
+      "description": "RAM für die VM (achte darauf, im Panel genug Memory zuzuweisen)",
       "env_variable": "RAM_MB",
       "default_value": "2048",
       "user_viewable": true,
@@ -99,7 +109,7 @@
     },
     {
       "name": "SSH_PUBLIC_KEY",
-      "description": "Optionaler SSH Public Key (empfohlen)",
+      "description": "Optionaler SSH Public Key",
       "env_variable": "SSH_PUBLIC_KEY",
       "default_value": "",
       "user_viewable": true,
@@ -117,7 +127,7 @@
     },
     {
       "name": "FORWARD_PORTS",
-      "description": "Zusätzliche Port-Forwards: host->guest, z. B. 80->80,443->443 (Ports müssen als Allocations im Panel vorhanden sein!)",
+      "description": "Port-Forwards host->guest, z. B. 80->80,443->443 (Ports müssen als Allocations existieren!)",
       "env_variable": "FORWARD_PORTS",
       "default_value": "",
       "user_viewable": true,
@@ -126,7 +136,7 @@
     },
     {
       "name": "CONSOLE",
-      "description": "VM-Konsole: serial (in Panel-Console) oder vnc",
+      "description": "Konsole: serial (Panel) oder vnc",
       "env_variable": "CONSOLE",
       "default_value": "serial",
       "user_viewable": true,
