@@ -1,6 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-
 cd /home/container
 
 # Banner beim Start (optional)
@@ -32,7 +31,6 @@ DISK_IMG="$VM_DIR/disk.qcow2"
 SEED_ISO="$VM_DIR/seed.iso"
 QMP_SOCK="$VM_DIR/qmp.sock"
 
-# URLs für Cloud-Images
 ubuntu_url() {
   case "$1" in
     20.04) echo "https://cloud-images.ubuntu.com/releases/focal/release/ubuntu-20.04-server-cloudimg-amd64.img" ;;
@@ -62,10 +60,13 @@ if [ ! -f "$BASE_IMG" ]; then
   mv "$BASE_IMG.tmp" "$BASE_IMG"
 fi
 
+# Backing-Format ermitteln (robust)
+BASE_FMT="$(qemu-img info --output=json "$BASE_IMG" | jq -r '.format')"
+
 # Overlay-Disk anlegen
 if [ ! -f "$DISK_IMG" ]; then
-  echo "Creating disk $DISK_IMG size ${DISK_SIZE_GB}G"
-  qemu-img create -f qcow2 -b "$BASE_IMG" "$DISK_IMG" "${DISK_SIZE_GB}G" >/dev/null
+  echo "Creating disk $DISK_IMG size ${DISK_SIZE_GB}G (backing format: ${BASE_FMT})"
+  qemu-img create -f qcow2 -F "$BASE_FMT" -b "$BASE_IMG" "$DISK_IMG" "${DISK_SIZE_GB}G" >/dev/null
 fi
 
 # Cloud-Init Seed (User/Pass/SSH-Key/Hostname + Autogrow)
