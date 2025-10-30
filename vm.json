@@ -1,13 +1,13 @@
 {
   "meta": { "version": "PTDL_v2" },
   "exported_at": "2025-10-30T00:00:00+00:00",
-  "name": "VM (QEMU/KVM) – Ubuntu/Debian Cloud",
+  "name": "VM (QEMU/KVM) – Ubuntu/Debian Cloud (Download & Export)",
   "author": "realtvalexfncloud@gmail.com",
-  "description": "Linux-VMs via QEMU/KVM mit offiziellen Cloud-Images (Ubuntu/Debian) und Cloud-Init. OS-/Versionsauswahl, SSH-Forwarding, sauberes Stop/Kill.",
+  "description": "Lädt beim Erstellen deine Skripte aus GitHub, lädt das OS-Cloud-Image, erzeugt Disk & Cloud-Init-Seed (Download & Export). Start/Stop ohne weitere Downloads.",
   "features": [],
   "docker_images": {
-    "GHCR (empfohlen)": "ghcr.io/realtvalexfncloud-sys/qemu-cloud:latest",
-    "Docker Hub (Fallback)": "docker.io/realtvalexfncloud-sys/qemu-cloud:latest"
+    "runtime (dockurr/qemu)": "docker.io/dockurr/qemu:latest",
+    "setup-only (debian:12-slim)": "docker.io/library/debian:12-slim"
   },
   "file_denylist": [],
   "startup": "/bin/bash /home/container/start.sh",
@@ -19,20 +19,20 @@
   },
   "scripts": {
     "installation": {
-      "script": "#!/bin/bash\nset -euo pipefail\nREPO_RAW=\"${REPO_RAW:-https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main}\"\nmkdir -p /mnt/server\ncurl -fsSL \"$REPO_RAW/scripts/start.sh\" -o /mnt/server/start.sh\ncurl -fsSL \"$REPO_RAW/scripts/stop.sh\"  -o /mnt/server/stop.sh\ncurl -fsSL \"$REPO_RAW/scripts/vm.sh\"    -o /mnt/server/vm.sh || true\ncurl -fsSL \"$REPO_RAW/scripts/banner.txt\" -o /mnt/server/banner.txt || true\nchmod +x /mnt/server/*.sh\nif [ -s /mnt/server/banner.txt ]; then echo; cat /mnt/server/banner.txt; echo; fi\necho \"Install ok\"\n",
-      "container": "ghcr.io/pterodactyl/installers:debian",
+      "script": "#!/bin/bash\nset -euo pipefail\napt-get update && apt-get install -y --no-install-recommends curl ca-certificates qemu-utils cloud-image-utils genisoimage jq\nREPO_RAW=${REPO_RAW:-https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main}\nmkdir -p /mnt/server /mnt/server/vm\n# Skripte aus deinem Repo laden (zuerst /scripts/, dann Root als Fallback)\nfetch(){ f=$1; out=$2; curl -fsSL $REPO_RAW/scripts/$f -o $out || curl -fsSL $REPO_RAW/$f -o $out; }\nfetch start.sh /mnt/server/start.sh\nfetch stop.sh /mnt/server/stop.sh\nfetch vm.sh /mnt/server/vm.sh || true\nfetch banner.txt /mnt/server/banner.txt || true\nchmod +x /mnt/server/*.sh || true\n# Download & Export der VM\nOS_FAMILY=${OS_FAMILY:-ubuntu}\nOS_VERSION=${OS_VERSION:-22.04}\nDISK_SIZE_GB=${DISK_SIZE_GB:-20}\nVM_USER=${VM_USER:-ptero}\nVM_PASSWORD=${VM_PASSWORD:-ChangeMe123!}\nSSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}\nVM_HOSTNAME=${VM_HOSTNAME:-vm}\nVM_DIR=/mnt/server/vm\nBASE_IMG=$VM_DIR/base.img\nDISK_IMG=$VM_DIR/disk.qcow2\nSEED_ISO=$VM_DIR/seed.iso\nubuntu_url(){ case $1 in 20.04) echo https://cloud-images.ubuntu.com/releases/focal/release/ubuntu-20.04-server-cloudimg-amd64.img;; 22.04) echo https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img;; 24.04) echo https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img;; *) echo Unsupported_Ubuntu_$1 >&2; exit 1;; esac; }\ndebian_url(){ case $1 in 11) echo https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-genericcloud-amd64.qcow2;; 12) echo https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2;; *) echo Unsupported_Debian_$1 >&2; exit 1;; esac; }\ncase $OS_FAMILY in ubuntu) IMG_URL=$(ubuntu_url $OS_VERSION) ;; debian) IMG_URL=$(debian_url $OS_VERSION) ;; *) echo Unsupported_OS_$OS_FAMILY >&2; exit 1 ;; esac\nif [ ! -f $BASE_IMG ]; then echo [INSTALL] Lade_OS_Image; curl -fL --retry 3 --connect-timeout 10 $IMG_URL -o $BASE_IMG.tmp && mv $BASE_IMG.tmp $BASE_IMG; fi\nBASE_FMT=$(qemu-img info --output=json $BASE_IMG | jq -r '.format' 2>/dev/null || echo qcow2)\nif [ ! -f $DISK_IMG ]; then echo [INSTALL] Erzeuge_VM_Disk_${DISK_SIZE_GB}G; qemu-img create -f qcow2 -F $BASE_FMT -b $BASE_IMG $DISK_IMG ${DISK_SIZE_GB}G >/dev/null; fi\nif [ ! -f $SEED_ISO ]; then echo [INSTALL] Erzeuge_Cloud_Init_ISO; cat > user-data <<EOF\n#cloud-config\nusers:\n  - name: ${VM_USER}\n    sudo: ALL=(ALL) NOPASSWD:ALL\n    groups: sudo\n    shell: /bin/bash\n    lock_passwd: false\nssh_pwauth: true\nchpasswd:\n  list: |\n    ${VM_USER}:${VM_PASSWORD}\n  expire: false\npackage_update: true\npackage_upgrade: false\ntimezone: UTC\ngrowpart:\n  mode: auto\n  devices: [/dev/vda]\n  ignore_growroot_disabled: false\nEOF\nif [ -n \\\"$SSH_PUBLIC_KEY\\\" ]; then echo ssh_authorized_keys: >> user-data; echo \\\"  - ${SSH_PUBLIC_KEY}\\\" >> user-data; fi\ncat > meta-data <<EOF\ninstance-id: install-$RANDOM\nlocal-hostname: ${VM_HOSTNAME}\nEOF\ncloud-localds -v $SEED_ISO user-data meta-data || genisoimage -output $SEED_ISO -volid cidata -joliet -rock user-data meta-data\nrm -f user-data meta-data\nfi\nif [ -s /mnt/server/banner.txt ]; then echo; cat /mnt/server/banner.txt; echo; fi\necho Install_ok\n",
+      "container": "docker.io/library/debian:12-slim",
       "entrypoint": "/bin/bash"
     }
   },
   "variables": [
     {
       "name": "REPO_RAW",
-      "description": "Quelle für Skripte (raw.githubusercontent.com)",
+      "description": "Raw-Pfad zu deinem Repo (ohne trailing Slash)",
       "env_variable": "REPO_RAW",
       "default_value": "https://raw.githubusercontent.com/realtvalexfncloud-sys/Pterodactyl-egg/main",
       "user_viewable": true,
       "user_editable": true,
-      "rules": "required|string|max:255"
+      "rules": "required|string|max:300"
     },
     {
       "name": "OS",
@@ -63,7 +63,7 @@
     },
     {
       "name": "RAM_MB",
-      "description": "RAM für die VM (achte darauf, im Panel genug Memory zuzuweisen)",
+      "description": "RAM für die VM",
       "env_variable": "RAM_MB",
       "default_value": "2048",
       "user_viewable": true,
@@ -81,7 +81,7 @@
     },
     {
       "name": "ENABLE_KVM",
-      "description": "KVM nutzen (Host muss /dev/kvm durchreichen, Container privilegiert)",
+      "description": "KVM nutzen (Host /dev/kvm, Server privileged)",
       "env_variable": "ENABLE_KVM",
       "default_value": "1",
       "user_viewable": true,
@@ -92,19 +92,19 @@
       "name": "VM_USER",
       "description": "User in der VM (Cloud-Init)",
       "env_variable": "VM_USER",
-      "default_value": "ptero",
+      "default_value": "root",
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|string|alpha_dash"
     },
     {
       "name": "VM_PASSWORD",
-      "description": "Passwort für VM_USER (ändere das!)",
+      "description": "Passwort für VM_USER",
       "env_variable": "VM_PASSWORD",
       "default_value": "ChangeMe123!",
       "user_viewable": true,
       "user_editable": true,
-      "rules": "required|string|min:8|max:128"
+      "rules": "required|string|min:1|max:128"
     },
     {
       "name": "SSH_PUBLIC_KEY",
@@ -126,9 +126,9 @@
     },
     {
       "name": "FORWARD_PORTS",
-      "description": "Port-Forwards host->guest, z. B. 80->80,443->443 (Ports müssen als Allocations existieren!)",
+      "description": "Zusätzliche Port-Forwards host->guest, z. B. 80->80,443->443 (im Startscript genutzt)",
       "env_variable": "FORWARD_PORTS",
-      "default_value": "80,443,22",
+      "default_value": "",
       "user_viewable": true,
       "user_editable": true,
       "rules": "nullable|string|max:1024"
@@ -144,7 +144,7 @@
     },
     {
       "name": "VNC_DISPLAY",
-      "description": "VNC Display (Port=5900+Display), nur wenn CONSOLE=vnc",
+      "description": "VNC Display (Port=5900+Display), nur bei CONSOLE=vnc",
       "env_variable": "VNC_DISPLAY",
       "default_value": "0",
       "user_viewable": true,
@@ -153,7 +153,7 @@
     },
     {
       "name": "SHOW_BANNER",
-      "description": "ASCII-Banner beim Install/Start anzeigen (1=an, 0=aus)",
+      "description": "ASCII-Banner beim Start zeigen (1=an, 0=aus)",
       "env_variable": "SHOW_BANNER",
       "default_value": "1",
       "user_viewable": true,
