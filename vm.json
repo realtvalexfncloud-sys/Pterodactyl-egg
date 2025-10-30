@@ -5,7 +5,7 @@
     "update_url": null
   },
   "name": "Linux VM (Ubuntu/Debian)",
-  "author": "DeinName",
+  "author": "ReaLTValexFN_Cloud",
   "description": "Mini-VM Container, wählbare Linux OS-Version, vm.sh wird automatisch von GitHub geladen und gestartet",
   "features": null,
   "docker_images": {
